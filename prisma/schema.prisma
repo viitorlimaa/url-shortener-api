@@ -5,5 +5,24 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now())
+
+  links     Link[]
+}
+
+model Link {
+  id        String   @id @default(uuid())
+  original  String
+  shortCode String   @unique
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
 }

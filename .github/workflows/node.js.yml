@@ -18,9 +18,9 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB || 'nest_api' }}
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'postgres' }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'change_me' }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         ports:
           - 5432:5432
         options: >-
@@ -30,7 +30,7 @@ jobs:
           --health-retries=5
 
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://postgres:change_me@localhost:5432/nest_api?schema=public' }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     steps:
       - name: Checkout do código
