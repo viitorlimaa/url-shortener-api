@@ -7,7 +7,7 @@ describe('AppController', () => {
 
     expect(appController.getHello()).toMatchObject({
       status: 'ok',
-      name: 'url-shortner-api',
+      name: 'url-shortener-api',
     });
   });
 });

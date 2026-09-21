@@ -66,9 +66,6 @@ Exemplo seguro de `.env`:
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DB_NAME?schema=public"
 PORT=3000
 ```
-
-> Nunca versionar valores reais de produção ou de desenvolvimento no GitHub.
-
 ---
 
 ## Variáveis de ambiente

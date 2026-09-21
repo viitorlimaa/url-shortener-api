@@ -5,7 +5,7 @@ export class AppService {
   getHello(): Record<string, string> {
     return {
       status: 'ok',
-      name: 'url-shortner-api',
+      name: 'url-shortener-api',
       message: 'API initialized successfully',
     };
   }
