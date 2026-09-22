@@ -50,7 +50,7 @@ Clone o projeto e instale as dependências:
 
 ```bash
 git clone <seu-repositorio>
-cd nest-api
+cd url-shortener
 pnpm install
 ```
 
