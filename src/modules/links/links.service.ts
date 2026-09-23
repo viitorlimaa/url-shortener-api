@@ -47,6 +47,10 @@ export class LinksService {
     return link;
   }
 
+  recordClick(linkId: string) {
+    return this.prisma.click.create({ data: { linkId } });
+  }
+
   private generateCode(length = 8): string {
     const bytes = randomBytes(length);
     return Array.from(

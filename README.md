@@ -65,6 +65,7 @@ Exemplo seguro de `.env`:
 ```env
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DB_NAME?schema=public"
 PORT=3000
+REDIS_URL="redis://localhost:6379"
 ```
 ---
 
@@ -74,6 +75,7 @@ PORT=3000
 |---|---|
 | DATABASE_URL | URL de conexão com o PostgreSQL |
 | PORT | Porta da API |
+| REDIS_URL | URL do Redis usado pelo rate limiting |
 
 ---
 
@@ -102,6 +104,13 @@ Isso sobe:
 
 - a API em porta 3000
 - o banco PostgreSQL em porta 5432
+- o Redis em porta 6379
+
+## Analytics e limites
+
+Cada acesso a `GET /api/:code` cria um registro de clique. Usuários autenticados consultam seus dados em `GET /api/analytics`, com total por link e agrupamento diário.
+
+O endpoint `POST /api/links` aceita até 10 requisições por IP a cada minuto. Redirects aceitam até 60 requisições por IP a cada minuto. O excesso retorna HTTP 429 e o cabeçalho `Retry-After`.
 
 ---
 
