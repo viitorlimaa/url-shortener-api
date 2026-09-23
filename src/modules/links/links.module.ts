@@ -8,5 +8,6 @@ import { RedirectController } from './redirect.controller.js';
   imports: [AuthModule],
   controllers: [LinksController, RedirectController],
   providers: [LinksService],
+  exports: [LinksService],
 })
 export class LinksModule {}

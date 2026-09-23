@@ -80,4 +80,20 @@ describe('LinksService', () => {
       NotFoundException,
     );
   });
+
+  it('records a click for the redirected link', async () => {
+    const prisma = {
+      click: {
+        create: vi.fn().mockResolvedValue({ id: 'click-id' }),
+      },
+    } as unknown as PrismaService;
+    const service = new LinksService(prisma);
+
+    await expect(service.recordClick('link-id')).resolves.toEqual({
+      id: 'click-id',
+    });
+    expect(prisma.click.create).toHaveBeenCalledWith({
+      data: { linkId: 'link-id' },
+    });
+  });
 });
