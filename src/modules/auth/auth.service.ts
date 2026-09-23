@@ -6,6 +6,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { normalizeEmail } from '../user/user.utils.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 
@@ -17,7 +18,7 @@ export class AuthService {
   ) {}
 
   async register(data: RegisterDto) {
-    const email = data.email.trim().toLowerCase();
+    const email = normalizeEmail(data.email);
     const existingUser = await this.prisma.user.findUnique({ where: { email } });
 
     if (existingUser) {
@@ -38,7 +39,7 @@ export class AuthService {
 
   async login(data: LoginDto) {
     const user = await this.prisma.user.findUnique({
-      where: { email: data.email.trim().toLowerCase() },
+      where: { email: normalizeEmail(data.email) },
     });
 
     if (!user?.passwordHash || !this.verifyPassword(data.password, user.passwordHash)) {
