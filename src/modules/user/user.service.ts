@@ -1,7 +1,7 @@
 import {
-    ConflictException,
-    Injectable,
-    NotFoundException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
@@ -9,19 +9,26 @@ import { CreateUserDto } from './dto/user-entities.js';
 
 @Injectable()
 export class UserService {
+  private readonly safeUserSelect = {
+    id: true,
+    name: true,
+    email: true,
+    createdAt: true,
+  } as const;
+
   constructor(private readonly prisma: PrismaService) {}
 
   findAll() {
     return this.prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
-      select: { id: true, name: true, email: true, createdAt: true },
+      select: this.safeUserSelect,
     });
   }
 
   async findOne(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      select: { id: true, name: true, email: true, createdAt: true },
+      select: this.safeUserSelect,
     });
 
     if (!user) {
@@ -55,7 +62,10 @@ export class UserService {
 
   async remove(id: string) {
     await this.findOne(id);
-    return this.prisma.user.delete({ where: { id } });
+    return this.prisma.user.delete({
+      where: { id },
+      select: this.safeUserSelect,
+    });
   }
 
   private throwConflictForDuplicateEmail(error: unknown): void {
