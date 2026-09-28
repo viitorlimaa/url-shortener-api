@@ -1,14 +1,16 @@
 import { Controller, Get, Param, Res, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { RateLimit } from '../../common/rate-limit/rate-limit.decorator.js';
 import { RateLimitGuard } from '../../common/rate-limit/rate-limit.guard.js';
 import { LinksService } from './links.service.js';
 
-@Controller()
+@Controller('r')
 export class RedirectController {
   constructor(private readonly linksService: LinksService) {}
 
   @Get(':code')
+  @ApiBearerAuth()
   @UseGuards(RateLimitGuard)
   @RateLimit({ key: 'links:redirect', limit: 60, windowSeconds: 60 })
   async redirect(

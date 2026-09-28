@@ -24,8 +24,8 @@ Usuário se autentica → cria um link curto a partir de uma URL longa
 ## 2. Escopo do MVP
 
 ### Must Have
-- Criar link curto a partir de uma URL longa
-- Redirecionar `GET /:code` para a URL original
+- Criar link curto a partir de uma URL longa, com slug personalizado opcional
+- Redirecionar `GET /api/r/:code` para a URL original
 - Autenticação (para gerenciar os próprios links)
 - Registro de clique (contagem + timestamp)
 - Rate limiting no endpoint de criação e no redirect
@@ -36,7 +36,6 @@ Usuário se autentica → cria um link curto a partir de uma URL longa
 - Analytics básico (cliques por dia)
 
 ### Nice to Have
-- Código customizado (slug escolhido pelo usuário)
 - Geolocalização/IP no analytics (via header, sem serviço externo)
 
 ### Out of Scope (deliberadamente fora do MVP)
@@ -79,7 +78,7 @@ Cliente
   │
   ├── POST /links (autenticado) ──► LinksController ──► LinksService ──► Prisma ──► Postgres
   │
-  ├── GET /:code (público) ──► RedirectController ──► valida rate limit (Redis)
+  ├── GET /api/r/:code (público) ──► RedirectController ──► valida rate limit (Redis)
   │                              └──► registra clique (Postgres)
   │                              └──► 302 redirect
   │
@@ -128,10 +127,10 @@ Cliente
 **Por que agora:** só faz sentido depois de ter autenticação, já que os links são vinculados a um dono.
 
 - Entidade `Link` + migration (URL original, código curto, dono, data de criação, expiração opcional)
-- Endpoint de criação de link (gera código curto único)
-- Endpoint de redirecionamento público (`GET /:code`) que busca a URL original e responde com redirect HTTP
+- Endpoint de criação de link (gera código curto único ou aceita slug personalizado único)
+- Endpoint de redirecionamento público (`GET /api/r/:code`) que busca a URL original e responde com redirect HTTP
 
-**Critério de saída da fase:** um usuário autenticado cria um link, e qualquer pessoa (sem login) consegue acessar `GET /:code` e ser redirecionada corretamente.
+**Critério de saída da fase:** um usuário autenticado cria um link, e qualquer pessoa (sem login) consegue acessar `GET /api/r/:code` e ser redirecionada corretamente.
 
 ---
 

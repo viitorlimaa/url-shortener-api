@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -20,14 +21,10 @@ export class AuthController {
     return this.authService.login(data);
   }
 
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Get('me')
   me(@Req() request: Request) {
     return (request as Request & { user: unknown }).user;
-  }
-
-  @Get('health')
-  health() {
-    return { status: 'auth-module-ok' };
   }
 }
