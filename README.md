@@ -17,8 +17,8 @@ Este projeto é uma API backend em NestJS para criação e gestão de links curt
 ### Fluxo principal
 
 1. Usuário faz login
-2. Cria um novo link curto
-3. Compartilha o código gerado
+2. Cria um novo link curto, opcionalmente escolhendo um slug
+3. Compartilha o código curto gerado ou personalizado
 4. Qualquer pessoa acessa o link curto
 5. O sistema redireciona para a URL original
 6. O clique é registrado para analytics
@@ -108,7 +108,18 @@ Isso sobe:
 
 ## Analytics e limites
 
-Cada acesso a `GET /api/:code` cria um registro de clique. Usuários autenticados consultam seus dados em `GET /api/analytics`, com total por link e agrupamento diário.
+Para criar um link, envie `POST /api/links` com um token Bearer. `original` é a URL de destino; `customCode` é opcional. Sem ele, a API gera um código aleatório. Slugs personalizados aceitam de 3 a 50 letras sem acento, números e hífens, são normalizados para minúsculas e precisam ser únicos. Os nomes `analytics`, `links` e `users` são reservados para rotas da API.
+
+```json
+{
+  "original": "https://www.example.com/artigos/introducao",
+  "customCode": "meu-artigo"
+}
+```
+
+Use o `shortCode` retornado para acessar `GET /api/meu-artigo`; a API registra o clique e redireciona para `original`. Códigos duplicados ou reservados retornam HTTP 409.
+
+Cada acesso a `GET /api/r/:code` cria um registro de clique. Usuários autenticados consultam seus dados em `GET /api/analytics`, com total por link e agrupamento diário.
 
 O endpoint `POST /api/links` aceita até 10 requisições por IP a cada minuto. Redirects aceitam até 60 requisições por IP a cada minuto. O excesso retorna HTTP 429 e o cabeçalho `Retry-After`.
 
@@ -176,7 +187,7 @@ A ideia é manter regras de negócio, autenticação e persistência separadas p
 ### Must Have
 
 - criar link curto
-- redirecionar GET /:code para a URL original
+- redirecionar GET /api/r/:code para a URL original
 - autenticação para gestão de links
 - registro de clique
 - rate limiting

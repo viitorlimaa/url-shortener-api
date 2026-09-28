@@ -1,11 +1,12 @@
 import {
-    Body,
-    Controller,
-    Get,
-    Post,
-    Req,
-    UseGuards,
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { RateLimit } from '../../common/rate-limit/rate-limit.decorator.js';
 import { RateLimitGuard } from '../../common/rate-limit/rate-limit.guard.js';
@@ -19,6 +20,7 @@ type AuthenticatedRequest = Request & { user: { sub: string } };
 export class LinksController {
   constructor(private readonly linksService: LinksService) {}
 
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RateLimitGuard)
   @RateLimit({ key: 'links:create', limit: 10, windowSeconds: 60 })
   @Post()
@@ -26,14 +28,11 @@ export class LinksController {
     return this.linksService.create(data, request.user.sub);
   }
 
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Get()
   findMine(@Req() request: AuthenticatedRequest) {
     return this.linksService.findByUser(request.user.sub);
   }
 
-  @Get('health')
-  health() {
-    return { status: 'links-module-ok' };
-  }
 }
