@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { CreateLinkDto } from './dto/create-link.dto.js';
@@ -7,23 +11,34 @@ import { CreateLinkDto } from './dto/create-link.dto.js';
 export class LinksService {
   private readonly codeAlphabet =
     '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  private readonly reservedCodes = new Set(['analytics', 'links', 'users']);
 
   constructor(private readonly prisma: PrismaService) {}
 
   async create(data: CreateLinkDto, userId: string) {
     const original = data.original.trim();
+    const customCode = data.customCode?.trim().toLowerCase();
+
+    if (customCode && this.reservedCodes.has(customCode)) {
+      throw new ConflictException(
+        'Este código é reservado para uma rota da API',
+      );
+    }
 
     for (let attempt = 0; attempt < 5; attempt += 1) {
       try {
         return await this.prisma.link.create({
           data: {
             original,
-            shortCode: this.generateCode(),
+            shortCode: customCode ?? this.generateCode(),
             userId,
           },
         });
       } catch (error) {
         if (!this.isUniqueConstraintError(error)) throw error;
+        if (customCode) {
+          throw new ConflictException('Este código curto já está em uso');
+        }
       }
     }
 

@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { LinksService } from './links.service.js';
 
@@ -51,6 +51,69 @@ describe('LinksService', () => {
       service.create({ original: 'https://example.com' }, 'user-id'),
     ).resolves.toMatchObject({ shortCode: 'newcode1' });
     expect(prisma.link.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('creates a link with a normalized custom code', async () => {
+    const createMock = vi.fn().mockResolvedValue({
+      id: 'link-id',
+      original: 'https://example.com/page',
+      shortCode: 'meu-artigo',
+      userId: 'user-id',
+      createdAt: new Date(),
+    });
+    const prisma = {
+      link: { create: createMock },
+    } as unknown as PrismaService;
+    const service = new LinksService(prisma);
+
+    await expect(
+      service.create(
+        {
+          original: 'https://example.com/page',
+          customCode: ' Meu-Artigo ',
+        },
+        'user-id',
+      ),
+    ).resolves.toMatchObject({ shortCode: 'meu-artigo' });
+
+    expect(createMock.mock.calls[0][0].data.shortCode).toBe('meu-artigo');
+  });
+
+  it('returns a conflict when a custom code is already in use', async () => {
+    const conflict = Object.assign(new Error('duplicate'), { code: 'P2002' });
+    const prisma = {
+      link: { create: vi.fn().mockRejectedValue(conflict) },
+    } as unknown as PrismaService;
+    const service = new LinksService(prisma);
+
+    await expect(
+      service.create(
+        {
+          original: 'https://example.com/page',
+          customCode: 'meu-artigo',
+        },
+        'user-id',
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.link.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects custom codes that collide with API routes', async () => {
+    const prisma = {
+      link: { create: vi.fn() },
+    } as unknown as PrismaService;
+    const service = new LinksService(prisma);
+
+    await expect(
+      service.create(
+        {
+          original: 'https://example.com/page',
+          customCode: 'Links',
+        },
+        'user-id',
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.link.create).not.toHaveBeenCalled();
   });
 
   it('returns only links belonging to the user', async () => {
