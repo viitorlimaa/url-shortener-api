@@ -1,35 +1,23 @@
 # URL Shortener API
 
-API para encurtar URLs longas, redirecionar o usuário para a URL original e registrar métricas de acesso.
+API para criar links curtos, redirecionar para os endereços originais e acompanhar cliques.
 
-## Visão geral
+## Hospedagem
 
-Este projeto é uma API backend em NestJS para criação e gestão de links curtos. A ideia central é permitir que usuários autenticados criem links, compartilhem os códigos gerados e acompanhem cliques e analytics.
+A API está hospedada no Render:
 
-### Objetivo
+- **Base da API:** <https://url-shortener-api-8j5z.onrender.com>
+- **Documentação interativa (Swagger):** <https://url-shortener-api-8j5z.onrender.com/docs>
 
-- encurtar links longos em códigos curtos
-- redirecionar publicamente o usuário para a URL original
-- manter controle dos links criados por cada usuário
-- registrar cliques e métricas de uso
-- aplicar rate limiting para evitar abuso
-
-### Fluxo principal
-
-1. Usuário faz login
-2. Cria um novo link curto, opcionalmente escolhendo um slug
-3. Compartilha o código curto gerado ou personalizado
-4. Qualquer pessoa acessa o link curto
-5. O sistema redireciona para a URL original
-6. O clique é registrado para analytics
+O PostgreSQL é um serviço separado. Configure `DATABASE_URL` na aplicação Render com a URL de conexão fornecida pelo banco; o endereço acima é o host da API, não a URL do banco. A aplicação também precisa de um Redis acessível por `REDIS_URL` para o rate limiting.
 
 ---
 
-## Stack tecnológica
+## Tecnologias
 
-- NestJS + TypeScript
-- PostgreSQL + Prisma
-- Docker + Docker Compose
+- NestJS e TypeScript
+- PostgreSQL, Prisma e Redis
+- Docker Compose
 - Vitest
 - GitHub Actions
 
@@ -39,89 +27,116 @@ Este projeto é uma API backend em NestJS para criação e gestão de links curt
 
 - Node.js 20+
 - pnpm 12.4.1
-- Docker e Docker Compose
-- PostgreSQL (opcional se usar Docker)
+- PostgreSQL e Redis
+- Docker e Docker Compose (opcionais)
 
----
+## Endpoints
 
-## Instalação
+Todas as rotas da API usam o prefixo `/api`. As rotas marcadas como Bearer exigem o token retornado pelo cadastro ou login, no cabeçalho `Authorization: Bearer <accessToken>`.
 
-Clone o projeto e instale as dependências:
+| Método   | Endpoint             | Acesso  | Descrição                                    |
+| -------- | -------------------- | ------- | -------------------------------------------- |
+| `POST`   | `/api/auth/register` | Público | Cadastra usuário e retorna token             |
+| `POST`   | `/api/auth/login`    | Público | Autentica usuário e retorna token            |
+| `GET`    | `/api/auth/me`       | Bearer  | Retorna a identidade autenticada             |
+| `POST`   | `/api/links`         | Bearer  | Cria um link curto                           |
+| `GET`    | `/api/links`         | Bearer  | Lista os links do usuário autenticado        |
+| `GET`    | `/api/r/:code`       | Público | Registra clique e redireciona para o destino |
+| `GET`    | `/api/analytics`     | Bearer  | Retorna analytics do usuário autenticado     |
+| `GET`    | `/api/users`         | Bearer  | Retorna o usuário autenticado                |
+| `GET`    | `/api/users/:id`     | Bearer  | Busca usuário conforme regra de acesso       |
+| `PATCH`  | `/api/users/:id`     | Bearer  | Atualiza usuário conforme regra de acesso    |
+| `DELETE` | `/api/users/:id`     | Bearer  | Exclui usuário conforme regra de acesso      |
+
+O Swagger está disponível em `/docs` no host da aplicação.
+
+## Exemplo: criar e acessar um link
+
+Cadastre uma conta (ou use `/api/auth/login` se já tiver uma):
 
 ```bash
-git clone <seu-repositorio>
-cd url-shortener
+curl -X POST https://url-shortener-api-8j5z.onrender.com/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Seu Nome","email":"voce@example.com","password":"SenhaForte123!"}'
+```
+
+A resposta contém `accessToken`. Use-o para criar o link; `customCode` é opcional:
+
+```bash
+curl -X POST https://url-shortener-api-8j5z.onrender.com/api/links \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer SEU_ACCESS_TOKEN" \
+  -d '{"original":"https://www.example.com/artigos/introducao","customCode":"meu-artigo"}'
+```
+
+O `shortCode` retornado será `meu-artigo` neste exemplo. O endereço para compartilhar é:
+
+```text
+https://url-shortener-api-8j5z.onrender.com/api/r/meu-artigo
+```
+
+Sem `customCode`, a API gera um código aleatório de 8 caracteres. Códigos personalizados aceitam de 3 a 50 letras minúsculas sem acento, números e hífens; são normalizados para minúsculas e precisam ser únicos. Códigos duplicados retornam HTTP 409.
+
+## Rate limiting
+
+- Criação de links: até 10 requisições por IP a cada minuto.
+- Redirecionamentos: até 60 requisições por IP a cada minuto.
+- Ao exceder o limite, a API retorna HTTP 429 e o cabeçalho `Retry-After`.
+
+O rate limiting usa Redis, então a aplicação precisa conseguir conectar ao endereço configurado em `REDIS_URL`.
+
+## Executar localmente
+
+Requisitos: Node.js 20+, pnpm 12.4.1, PostgreSQL e Redis. Docker e Docker Compose podem ser usados para executar os serviços localmente.
+
+Instale as dependências e crie o arquivo de ambiente (PowerShell):
+
+```powershell
 pnpm install
+Copy-Item .env.example .env
 ```
 
-Crie um arquivo de ambiente local com as variáveis necessárias:
+Configure `DATABASE_URL` para o PostgreSQL e `REDIS_URL` para o Redis. Antes de iniciar a API com um banco vazio, aplique as migrations:
 
 ```bash
-cp .env.example .env
+pnpm exec prisma migrate deploy
 ```
 
-Exemplo seguro de `.env`:
+Para usar o Docker Compose, o healthcheck atual espera `POSTGRES_DB=nest_api` e `POSTGRES_USER=postgres`; configure também a `DATABASE_URL` com esses valores e com a senha definida em `POSTGRES_PASSWORD`. Dentro da rede do Compose, o host do PostgreSQL é `db` e o do Redis é `redis`. Depois de subir os serviços, aplique as migrations no container da API com `docker compose exec app pnpm exec prisma migrate deploy`.
 
-```env
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DB_NAME?schema=public"
-PORT=3000
-REDIS_URL="redis://localhost:6379"
-```
----
-
-## Variáveis de ambiente
-
-| Variável | Descrição |
-|---|---|
-| DATABASE_URL | URL de conexão com o PostgreSQL |
-| PORT | Porta da API |
-| REDIS_URL | URL do Redis usado pelo rate limiting |
-
----
-
-## Rodando localmente
-
-### Desenvolvimento
+Inicie a API em desenvolvimento:
 
 ```bash
 pnpm start:dev
 ```
 
-### Produção
+A API local fica em `http://localhost:3000`; o Swagger fica em `http://localhost:3000/docs`.
+
+Para iniciar os serviços definidos no Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+Para build e execução em modo de produção:
 
 ```bash
 pnpm build
 pnpm start:prod
 ```
 
-### Com Docker
+## Variáveis de ambiente
 
-```bash
-docker compose up --build
-```
-
-Isso sobe:
-
-- a API em porta 3000
-- o banco PostgreSQL em porta 5432
-- o Redis em porta 6379
-
-## Analytics e limites
-
-Para criar um link, envie `POST /api/links` com um token Bearer. `original` é a URL de destino; `customCode` é opcional. Sem ele, a API gera um código aleatório. Slugs personalizados aceitam de 3 a 50 letras sem acento, números e hífens, são normalizados para minúsculas e precisam ser únicos. Os nomes `analytics`, `links` e `users` são reservados para rotas da API.
-
-```json
-{
-  "original": "https://www.example.com/artigos/introducao",
-  "customCode": "meu-artigo"
-}
-```
-
-Use o `shortCode` retornado para acessar `GET /api/meu-artigo`; a API registra o clique e redireciona para `original`. Códigos duplicados ou reservados retornam HTTP 409.
-
-Cada acesso a `GET /api/r/:code` cria um registro de clique. Usuários autenticados consultam seus dados em `GET /api/analytics`, com total por link e agrupamento diário.
-
-O endpoint `POST /api/links` aceita até 10 requisições por IP a cada minuto. Redirects aceitam até 60 requisições por IP a cada minuto. O excesso retorna HTTP 429 e o cabeçalho `Retry-After`.
+| Variável            | Descrição                                     |
+| ------------------- | --------------------------------------------- |
+| `DATABASE_URL`      | URL de conexão PostgreSQL usada pelo Prisma   |
+| `REDIS_URL`         | URL de conexão Redis usada pelo rate limiting |
+| `PORT`              | Porta HTTP da aplicação (padrão: `3000`)      |
+| `JWT_SECRET`        | Segredo privado usado para assinar tokens JWT |
+| `NODE_ENV`          | Ambiente de execução                          |
+| `POSTGRES_DB`       | Nome do banco PostgreSQL no Docker Compose    |
+| `POSTGRES_USER`     | Usuário PostgreSQL no Docker Compose          |
+| `POSTGRES_PASSWORD` | Senha PostgreSQL no Docker Compose            |
 
 ---
 
@@ -142,68 +157,23 @@ pnpm test:e2e
 
 ---
 
-## Estrutura do projeto
+## Estrutura principal
 
 ```text
 src/
-  app.module.ts
-  app.controller.ts
-  app.service.ts
-  main.ts
-  prisma/
-  users/
-  auth/
-  links/
-  analytics/
+  common/rate-limit/  # Rate limiting com Redis
+  modules/
+    analytics/        # Consultas de analytics
+    auth/             # Cadastro, login e JWT
+    links/            # Criação, listagem e redirecionamento
+    user/             # Operações de usuário
+  prisma/             # Serviço Prisma
+  main.ts             # Prefixo /api e configuração Swagger
 prisma/
-  schema.prisma
   migrations/
-.test/
-Dockerfile
-docker-compose.yml
-vitest.config.ts
-vitest.config.e2e.ts
-package.json
+  schema.prisma
+test/                 # Testes da aplicação
 ```
-
----
-
-## Arquitetura
-
-O projeto foi pensado em módulos e separação de responsabilidades:
-
-- AuthModule: autenticação, cadastro e login
-- UsersModule: dados do usuário
-- LinksModule: criação e listagem de links
-- AnalyticsModule: métricas e cliques
-- PrismaModule: acesso ao banco
-
-A ideia é manter regras de negócio, autenticação e persistência separadas para facilitar manutenção e testes.
-
----
-
-## MVP e roadmap
-
-### Must Have
-
-- criar link curto
-- redirecionar GET /api/r/:code para a URL original
-- autenticação para gestão de links
-- registro de clique
-- rate limiting
-
-### Should Have
-
-- listagem de links do usuário
-- contagem de cliques
-- expiração opcional de link
-- analytics básicos por dia
-
-### Nice to Have
-
-- slug customizado
-- códigos personalizados por usuário
-- geolocalização e dados do requisitante
 
 ---
 
@@ -232,3 +202,6 @@ O projeto já conta com workflow de GitHub Actions para executar:
 
 Este projeto foi desenhado como um backend de portfólio/serviço realista de encurtador de URLs, com foco em arquitetura limpa, boas práticas e facilidade de execução local.
 
+```
+
+```
